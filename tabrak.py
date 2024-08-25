@@ -40,43 +40,32 @@ def generate_field_string(field_type, depth, max_depth=1):
 
 
 def generate_query_string(query_name, query_info):
-    """ Generate a query string for each query including its fields. """
-    # Generate argument strings
     print('info', vars(query_info))
+    global_arg_list = []
     args_list = []
-    if "id" in query_info.args:
-        print('#######args', query_info.args['id'].type)
+    variables = {}
+
     for arg in query_info.args:
-        print('bjir', arg)
+        global_arg_list.append(f'${arg}: {query_info.args[arg].type}')
+        variables[arg] = 1
         args_list.append(f'{arg}: ${arg}')
 
+    global_arg_str = ", ".join(global_arg_list)
     args_str = ", ".join(args_list)
-    print('awikwok', args_str)
     vars_str = ", ".join([f"{arg.name}: ${arg.name}" for arg in query_info.args if hasattr(arg, 'type')])
-    print('apalah', vars_str)
-    variables = {arg.split(":")[0]: 1 for arg in args_list}
-    print('bjir slur', variables)
-    # print('xxx', args_str)
-    # for arg in query_info.args:
-    #     arg_type = get_full_type(arg.type)
-    #     args_list.append(f"{arg.name}: {arg_type}")
-    # args_str = ", ".join(args_list)
-    # args_str = None
-    
-    # Generate field strings
+
     return_type = get_full_type(query_info.type)
     field_string = generate_field_string(return_type, 0)
     if field_string:
         if args_str:
-            query = f"{{ {query_name}({args_str}) {{ {field_string} }} }}"
+            query = f"query ({global_arg_str}) {{ {query_name}({args_str}) {{ {field_string} }} }} "
         else:
             query = f"{{ {query_name} {{ {field_string} }} }}"
     else:
         if args_str:
-            query = f"{{ {query_name}({args_str}) }}"
+            query = f"query ({global_arg_str}) {{ {query_name}({args_str}) }}"
         else:
             query = f"{{ {query_name} }}"
-    print('ini query awikwok', query)
     return query, variables
 
 def send_query(query, variables, url, headers=None):
