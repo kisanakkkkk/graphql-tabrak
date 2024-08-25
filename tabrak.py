@@ -36,7 +36,7 @@ def get_full_type(type_obj):
         type_obj = type_obj.of_type
     return type_obj
 
-def generate_field_string(field_type, depth, max_depth=1):
+def generate_field_string(field_type, depth, max_depth=data['max_depth']):
     if depth > max_depth:
         return "__typename"  # Prevents deep nesting beyond max_depth
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     
     # If authentication is required, include the token
     headers = {
-        'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+        'Authorization': data['auth_token']
     }
     
     try:
