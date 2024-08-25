@@ -1,0 +1,29 @@
+# Sample YAML file
+
+id: 1
+filter: "gra"
+limit: 1
+offset: 1
+name: John Doe
+age: 30
+married: true
+children:
+  - name: Jane Doe
+    age: 10
+  - name: Jake Doe
+    age: 8
+
+address:
+  street: 123 Main St
+  city: Anytown
+  state: CA
+  postal_code: 12345
+
+contacts:
+  email: johndoe@example.com
+  phone: 555-1234
+
+hobbies:
+  - reading
+  - hiking
+  - coding

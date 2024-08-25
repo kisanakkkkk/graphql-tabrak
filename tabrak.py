@@ -1,10 +1,27 @@
 import requests
 from graphql import build_client_schema, get_introspection_query, GraphQLObjectType
 import json
+import yaml
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+with open('data.yaml', 'r') as file:
+    data = yaml.safe_load(file)
+
 
 def fetch_schema(url, headers=None):
     query = get_introspection_query()
-    print(query)
     response = requests.post(url, json={'query': query}, headers=headers)
     response.raise_for_status()
     data = response.json()
@@ -40,14 +57,13 @@ def generate_field_string(field_type, depth, max_depth=1):
 
 
 def generate_query_string(query_name, query_info):
-    print('info', vars(query_info))
     global_arg_list = []
     args_list = []
     variables = {}
 
     for arg in query_info.args:
         global_arg_list.append(f'${arg}: {query_info.args[arg].type}')
-        variables[arg] = 1
+        variables[arg] = data[str(arg)]
         args_list.append(f'{arg}: ${arg}')
 
     global_arg_str = ", ".join(global_arg_list)
@@ -66,10 +82,9 @@ def generate_query_string(query_name, query_info):
             query = f"query ({global_arg_str}) {{ {query_name}({args_str}) }}"
         else:
             query = f"{{ {query_name} }}"
-    return query, variables
+    return query, variables, global_arg_str
 
 def send_query(query, variables, url, headers=None):
-    print('kiriman', {'query': query, 'variables': variables})
     """ Send the query to the GraphQL API and return the response. """
     response = requests.post(url, json={'query': query, 'variables': variables}, headers=headers)
     response.raise_for_status()
@@ -79,15 +94,24 @@ def generate_and_send_queries(schema, url, headers=None):
     query_type = schema.query_type
     queries = query_type.fields
     for query_name, query_info in queries.items():
-        print(f"Processing Query: {query_name}")
-        
-        query_string, variables = generate_query_string(query_name, query_info)
-        print(f"Generated Query String: {query_string}")
+        print(bcolors.OKBLUE + bcolors.BOLD + f"Processing Query: {query_name}" + bcolors.ENDC)
+        print("")
+        query_string, variables, global_arg_str = generate_query_string(query_name, query_info)
+        print(bcolors.BOLD + "Variables Required:" + bcolors.ENDC)
+        print(f'{global_arg_str}')
+        print("")
+        print(bcolors.BOLD + "Generated Query String:" + bcolors.ENDC)
+        print(f"{query_string}")
+        print("")
+        print(bcolors.BOLD + "Variables supplied:" + bcolors.ENDC)
+        print(f"{json.dumps(variables)}")
+        print("")
+
         
         try:
             response = send_query(query_string, variables, url, headers)
-            print(f"Response for {query_name}:")
-            print(response)
+            print(bcolors.BOLD + "Response:" + bcolors.ENDC)
+            print(json.dumps(response, sort_keys=True, indent=4))
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred while processing {query_name}: {http_err}")
         except Exception as err:
@@ -97,7 +121,7 @@ def generate_and_send_queries(schema, url, headers=None):
 
 # Example usage
 if __name__ == "__main__":
-    graphql_url = 'http://localhost:4000/api'  # Replace with your GraphQL endpoint
+    graphql_url = 'http://localhost:4000/graphql'  # Replace with your GraphQL endpoint
     
     # If authentication is required, include the token
     headers = {
