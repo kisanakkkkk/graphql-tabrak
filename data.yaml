@@ -1,8 +1,10 @@
 # Sample YAML file
 
 #general configuration
-auth_token: "your_token_here"
-max_depth: 3
+graphql_url: ""
+cookies: ""
+auth_token: ""
+max_depth: 1
 
 
 #enum configuration
@@ -12,3 +14,4 @@ limit: 1
 offset: 1
 sort: null
 pagination: null
+queries: null

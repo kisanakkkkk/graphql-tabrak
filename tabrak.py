@@ -2,6 +2,8 @@ import requests
 from graphql import build_client_schema, get_introspection_query, GraphQLObjectType
 import json
 import yaml
+from http.cookies import SimpleCookie
+
 
 
 class bcolors:
@@ -17,12 +19,12 @@ class bcolors:
 
 
 with open('data.yaml', 'r') as file:
-    data = yaml.safe_load(file)
+    config = yaml.safe_load(file)
 
 
-def fetch_schema(url, headers=None):
+def fetch_schema(url, headers=None, cookies=None):
     query = get_introspection_query()
-    response = requests.post(url, json={'query': query}, headers=headers)
+    response = requests.post(url, json={'query': query}, headers=headers, cookies=json_cookies)
     response.raise_for_status()
     data = response.json()
     return data['data']
@@ -36,7 +38,7 @@ def get_full_type(type_obj):
         type_obj = type_obj.of_type
     return type_obj
 
-def generate_field_string(field_type, depth, max_depth=data['max_depth']):
+def generate_field_string(field_type, depth, max_depth=config['max_depth']):
     if depth > max_depth:
         return "__typename"  # Prevents deep nesting beyond max_depth
 
@@ -63,7 +65,7 @@ def generate_query_string(query_name, query_info):
 
     for arg in query_info.args:
         global_arg_list.append(f'${arg}: {query_info.args[arg].type}')
-        variables[arg] = data[str(arg)]
+        variables[arg] = config[str(arg)]
         args_list.append(f'{arg}: ${arg}')
 
     global_arg_str = ", ".join(global_arg_list)
@@ -86,52 +88,79 @@ def generate_query_string(query_name, query_info):
 
 def send_query(query, variables, url, headers=None):
     """ Send the query to the GraphQL API and return the response. """
-    response = requests.post(url, json={'query': query, 'variables': variables}, headers=headers)
+    response = requests.post(url, json={'query': query, 'variables': variables}, headers=headers, cookies=json_cookies)
     response.raise_for_status()
     return response.json()
 
-def generate_and_send_queries(schema, url, headers=None):
+def get_var_requirements(queries):
+    var_reqs = {}
+    for query_name, query_info in queries.items():
+        for arg in query_info.args:
+            var_reqs[arg] = query_info.args[arg].type
+    sorted_dict = dict(sorted(var_reqs.items()))
+    for var in sorted_dict:
+        print(f'{var}: {sorted_dict[var]}')
+
+def generate_and_send_queries(schema, url, headers=None, cookies=None):
     query_type = schema.query_type
     queries = query_type.fields
-    for query_name, query_info in queries.items():
-        print(bcolors.OKBLUE + bcolors.BOLD + f"Processing Query: {query_name}" + bcolors.ENDC)
+    print("1. see all args requirements")
+    print("2. generate queries")
+    opt = input(">> ")
+    if opt == "1":
         print("")
-        query_string, variables, global_arg_str = generate_query_string(query_name, query_info)
         print(bcolors.BOLD + "Variables Required:" + bcolors.ENDC)
-        print(f'{global_arg_str}')
         print("")
-        print(bcolors.BOLD + "Generated Query String:" + bcolors.ENDC)
-        print(f"{query_string}")
-        print("")
-        print(bcolors.BOLD + "Variables supplied:" + bcolors.ENDC)
-        print(f"{json.dumps(variables)}")
-        print("")
+        get_var_requirements(queries)
+    elif opt == "2":
+        for query_name, query_info in queries.items():
+            print(bcolors.OKBLUE + bcolors.BOLD + f"Processing Query: {query_name}" + bcolors.ENDC)
+            print("")
+            query_string, variables, global_arg_str = generate_query_string(query_name, query_info)
+            print(bcolors.BOLD + "Variables Required:" + bcolors.ENDC)
+            print(f'{global_arg_str}')
+            print("")
+            print(bcolors.BOLD + "Generated Query String:" + bcolors.ENDC)
+            print(f"{query_string}")
+            print("")
+            print(bcolors.BOLD + "Variables supplied:" + bcolors.ENDC)
+            print(f"{json.dumps(variables)}")
+            print("")
 
-        
-        try:
-            response = send_query(query_string, variables, url, headers)
-            print(bcolors.BOLD + "Response:" + bcolors.ENDC)
-            print(json.dumps(response, sort_keys=True, indent=4))
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred while processing {query_name}: {http_err}")
-        except Exception as err:
-            print(f"An error occurred while processing {query_name}: {err}")
-        
-        print("")  # Newline for better readability
+            try:
+                response = send_query(query_string, variables, url, headers)
+                print(bcolors.BOLD + "Response:" + bcolors.ENDC)
+                print(json.dumps(response, sort_keys=True, indent=4))
+            except requests.exceptions.HTTPError as http_err:
+                print(f"HTTP error occurred while processing {query_name}: {http_err}")
+            except Exception as err:
+                print(f"An error occurred while processing {query_name}: {err}")
+            
+            print("")  # Newline for better readability
+    else:
+        print("[!] Error")
 
 # Example usage
 if __name__ == "__main__":
-    graphql_url = 'http://localhost:4000/graphql'  # Replace with your GraphQL endpoint
+    graphql_url = config['graphql_url']  # Replace with your GraphQL endpoint
     
     # If authentication is required, include the token
     headers = {
-        'Authorization': data['auth_token']
+        'Authorization': config['auth_token'],
+        'X-Csrf-Token': config['auth_token']
     }
+
+    cookie = SimpleCookie()
+    cookie.load(config['cookies'])
+    json_cookies = {}
+    for key, morsel in cookie.items():
+        json_cookies[key] = morsel.value
+    print(json_cookies)
     
     try:
-        introspection_data = fetch_schema(graphql_url, headers=headers)
+        introspection_data = fetch_schema(graphql_url, headers=headers, cookies=json_cookies)
         schema = build_schema(introspection_data)
-        generate_and_send_queries(schema, graphql_url, headers)
+        generate_and_send_queries(schema, graphql_url, headers=headers, cookies=json_cookies)
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
     except KeyError as key_err:
