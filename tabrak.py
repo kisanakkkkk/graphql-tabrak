@@ -3,7 +3,8 @@ from graphql import build_client_schema, get_introspection_query, GraphQLObjectT
 import json
 import yaml
 from http.cookies import SimpleCookie
-
+import argparse
+import os
 
 
 class bcolors:
@@ -18,13 +19,11 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-with open('data.yaml', 'r') as file:
-    config = yaml.safe_load(file)
-
+max_depth = 0
 
 def fetch_schema(url, headers=None, cookies=None):
     query = get_introspection_query()
-    response = requests.post(url, json={'query': query}, headers=headers, cookies=json_cookies)
+    response = requests.post(url, json={'query': query}, headers=headers, cookies=json_cookies, verify=False)
     response.raise_for_status()
     data = response.json()
     return data['data']
@@ -38,7 +37,7 @@ def get_full_type(type_obj):
         type_obj = type_obj.of_type
     return type_obj
 
-def generate_field_string(field_type, depth, max_depth=config['max_depth']):
+def generate_field_string(field_type, depth, max_depth=max_depth):
     if depth > max_depth:
         return "__typename"  # Prevents deep nesting beyond max_depth
 
@@ -121,12 +120,12 @@ def send_query(query, variables, url, headers=None):
     print(bcolors.BOLD + "Request Body (copy to burpsuite):" + bcolors.ENDC)
     print(f'{json.dumps(jsons)}')
     print("")
-    response = requests.post(url, json=jsons, headers=headers, cookies=json_cookies)
+    response = requests.post(url, json=jsons, headers=headers, cookies=json_cookies, verify=False)
     response.raise_for_status()
     return response.json()
 
 def get_var_requirements(operations, schema):
-    def get_input_fields(input_type, depth, max_depth=config['max_depth']):
+    def get_input_fields(input_type, depth, max_depth=max_depth):
         if depth > max_depth:
             return ""  # Prevents deep nesting beyond max_depth
         """Recursively retrieves input object fields."""
@@ -221,9 +220,30 @@ def generate_and_send_queries(schema, url, headers=None, cookies=None):
     else:
         print("[!] Error")
 
+
+
+def read_file(file_path):
+    """Reads and returns the content of the file."""
+    if not os.path.exists(file_path):
+        print(f"Error: File '{file_path}' not found.")
+        return None
+    
+    with open(file_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+
+        return config
+
 # Example usage
 if __name__ == "__main__":
-    graphql_url = config['graphql_url']  # Replace with your GraphQL endpoint
+    parser = argparse.ArgumentParser(description="Process a file and a URL.")
+    parser.add_argument("file", type=str, help="Path to the file")
+    parser.add_argument("url", type=str, help="URL to process")
+
+    args = parser.parse_args()
+    config = read_file(args.file)
+    max_depth = config["max_depth"]
+
+    graphql_url = args.url
     
     # If authentication is required, include the token
     headers = {
