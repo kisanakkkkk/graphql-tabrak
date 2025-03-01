@@ -161,8 +161,11 @@ def generate_and_send_queries(schema, url, headers=None, cookies=None):
     queries = query_type.fields
 
     mutation_type = schema.mutation_type
-    mutations = mutation_type.fields
-    
+    if mutation_type:
+        mutations = mutation_type.fields
+    else:
+        mutations = None
+
     print("1. see all args requirements")
     print("2. generate and send queries")
     print("3. generate mutations (mutations is dangerous so we are not gonna send it)")
@@ -172,7 +175,10 @@ def generate_and_send_queries(schema, url, headers=None, cookies=None):
         get_var_requirements(queries, schema)
         print("")
         print("\n" + bcolors.BOLD + "Mutations Variables Required:" + bcolors.ENDC + "\n")
-        get_var_requirements(mutations, schema)
+        if mutations:
+            get_var_requirements(mutations, schema)
+        else:
+            print("[!] Seems like graphql doesn't have mutation") 
     elif opt == "2":
         for query_name, query_info in queries.items():
             print(bcolors.OKBLUE + bcolors.BOLD + f"Processing Query: {query_name}" + bcolors.ENDC)
@@ -199,24 +205,27 @@ def generate_and_send_queries(schema, url, headers=None, cookies=None):
             
             print("")  # Newline for better readability
     elif opt == "3":
-        for mutation_name, mutation_info in mutations.items():
-            print(mutation_name, mutation_info)
-            print(bcolors.OKBLUE + bcolors.BOLD + f"Processing Query: {mutation_name}" + bcolors.ENDC)
-            print("")
-            mutation_string, variables, global_arg_str = generate_mutation_string(mutation_name, mutation_info)
-            print(bcolors.BOLD + "Variables Required:" + bcolors.ENDC)
-            print(f'{global_arg_str}')
-            print("")
-            print(bcolors.BOLD + "Generated Query String:" + bcolors.ENDC)
-            print(f"{mutation_string}")
-            print("")
-            print(bcolors.BOLD + "Variables supplied:" + bcolors.ENDC)
-            print(f"{json.dumps(variables)}")
-            print("")
-            jsons = {'query': mutation_string, 'variables': variables}
-            print(bcolors.BOLD + "Request Body (copy to burpsuite):" + bcolors.ENDC)
-            print(f'{json.dumps(jsons)}')
-            print("")
+        if mutations:
+            for mutation_name, mutation_info in mutations.items():
+                print(mutation_name, mutation_info)
+                print(bcolors.OKBLUE + bcolors.BOLD + f"Processing Query: {mutation_name}" + bcolors.ENDC)
+                print("")
+                mutation_string, variables, global_arg_str = generate_mutation_string(mutation_name, mutation_info)
+                print(bcolors.BOLD + "Variables Required:" + bcolors.ENDC)
+                print(f'{global_arg_str}')
+                print("")
+                print(bcolors.BOLD + "Generated Query String:" + bcolors.ENDC)
+                print(f"{mutation_string}")
+                print("")
+                print(bcolors.BOLD + "Variables supplied:" + bcolors.ENDC)
+                print(f"{json.dumps(variables)}")
+                print("")
+                jsons = {'query': mutation_string, 'variables': variables}
+                print(bcolors.BOLD + "Request Body (copy to burpsuite):" + bcolors.ENDC)
+                print(f'{json.dumps(jsons)}')
+                print("")
+        else:
+            print("[!] Seems like graphql doesn't have mutation") 
     else:
         print("[!] Error")
 
