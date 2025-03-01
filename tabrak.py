@@ -37,7 +37,7 @@ def get_full_type(type_obj):
         type_obj = type_obj.of_type
     return type_obj
 
-def generate_field_string(field_type, depth, max_depth=max_depth):
+def generate_field_string(field_type, depth):
     if depth > max_depth:
         return "__typename"  # Prevents deep nesting beyond max_depth
 
@@ -48,7 +48,7 @@ def generate_field_string(field_type, depth, max_depth=max_depth):
         for field_name, field in fields.items():
             sub_field_type = get_full_type(field.type)
             if isinstance(sub_field_type, GraphQLObjectType):
-                sub_fields = generate_field_string(sub_field_type, depth+1, max_depth)
+                sub_fields = generate_field_string(sub_field_type, depth+1)
                 field_strings.append(f"{field_name} {{ {sub_fields} }}")
             else:
                 field_strings.append(field_name)
@@ -125,7 +125,7 @@ def send_query(query, variables, url, headers=None):
     return response.json()
 
 def get_var_requirements(operations, schema):
-    def get_input_fields(input_type, depth, max_depth=max_depth):
+    def get_input_fields(input_type, depth):
         if depth > max_depth:
             return ""  # Prevents deep nesting beyond max_depth
         """Recursively retrieves input object fields."""
@@ -133,10 +133,8 @@ def get_var_requirements(operations, schema):
         if hasattr(input_type, 'fields'):
             for field_name, field in input_type.fields.items():
                 field_type = get_full_type(field.type)
-                # print(field_type, type(field_type))
-                # print(isinstance(field_type, GraphQLInputObjectType))
                 if isinstance(field_type, GraphQLInputObjectType):
-                    sub_fields = get_input_fields(field_type, depth+1, max_depth)
+                    sub_fields = get_input_fields(field_type, depth+1)
                     fields.append(f"{field_name}: {{ {', '.join(sub_fields)} }}")
                 else:
                     fields.append(f"{field_name}: {field_type}")
@@ -277,3 +275,4 @@ if __name__ == "__main__":
         print(f"Key error: {key_err}. Check if the schema returned correctly.")
     except Exception as err:
         print(f"An unexpected error occurred: {err}")
+
