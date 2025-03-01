@@ -1,7 +1,7 @@
 # Sample YAML file
 
 #general configuration
-graphql_url: ""
+graphql_url: "http://localhost:4000/graphql"
 cookies: ""
 auth_token: ""
 max_depth: 1
