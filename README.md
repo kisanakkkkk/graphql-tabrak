@@ -11,8 +11,17 @@ Usage:
 2. configure the data.yaml, add your variables
 3. python3 tabrak.py
 ```
+![image](https://github.com/user-attachments/assets/f93c6cd1-15ee-40a9-859f-b01296d04d92)
 
-Example:
+option 1: check mandatory variable
+
+option 2: generate queries (in the form of request body so you can copy paste it direct to burpsuite) and automatically send it
+
+option 3: generate mutation queries (in the form of request body so you can copy paste it direct to burpsuite)
+
+
+
+**Example:**
 
 *data.yaml*
 ```
